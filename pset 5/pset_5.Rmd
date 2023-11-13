@@ -1,0 +1,193 @@
+---
+title: |
+  | \vspace{13cm} \LARGE\textcolor{white}{\textbf{PSET 5: Completed Replication}}
+subtitle: \LARGE\textcolor{white}{\textbf{EDU S598 | Dr.Susan Dynarski}}
+author: \LARGE\textcolor{white}{\textbf{Dean Kaplan}}
+date: \LARGE\textcolor{white}{\textbf{October 15, 2023}}
+geometry: "left=1cm,right=1cm,top=2cm,bottom=2cm"
+header-includes:
+-  \AddToShipoutPictureBG{\ifthenelse{\value{page}<2}{\AtPageLowerLeft{{\includegraphics[width=17in,height=20in]{comp5.jpg}}}}{}}
+output: 
+  pdf_document:
+    latex_engine: xelatex
+    fig_caption: false
+    keep_tex: true
+
+    includes:
+      in_header: header.tex
+
+    
+always_allow_html: yes
+---
+\thispagestyle{firstpage}  
+\newpage
+\tableofcontents
+\newpage
+\definecolor{hightlightColor}{HTML}{FFFF66}
+
+```{r define_function, include=F, echo=FALSE,fig.width = 1, fig.height=2, fig.align='center',results = 'asis'}
+#libraries we will use
+library(knitr)
+library(flextable)
+library(dplyr)
+library(magrittr)
+#load data
+data= haven::read_dta("mindspark_balance.dta")
+options(knitr.kable.NA = '')
+
+
+#declare function that accepts a list of dataframes as a tuple where index 1 = treatment rows and index 2 = control row, and two string vectors, First is our variables to describe and second are the row labels
+#this function will fashion and format our tables
+
+table_maker <- function(data_subsets,vars,row_labels){
+  
+  all_vars=vars
+  #nice to use them separate sometimes
+  treatment = data_subsets[[1]]
+  control = data_subsets[[2]]
+  vars= all_vars[1:12]
+  #will use together for t-tests
+  both = rbind(treatment,control)
+  #these are the title rows, rest of row will be blank, will come back to this in a moment
+  titles = grep("#",row_labels)
+  #once we add the rows in, there will be some reshuffling so this is accounting for that reshuffle
+  title_index = (titles-c(0,0,2:(length(titles)-1)))
+  
+  #first column, var means for treatment
+  treatment_mean_vector_a = treatment %>% summarise(mean=apply(.[vars],2,mean,na.rm=T))
+  
+   #Second column, var means for control
+  control_mean_vector_a = control %>% summarise(mean=apply(.[vars],2,mean,na.rm=T))
+  
+  #third column, their difference
+  difference_vector_a = round(treatment_mean_vector_a-control_mean_vector_a,3)
+  
+  #Column 4, se vector of stderror in difference between treatment and control for each var
+  se_vector_a = unlist(lapply(vars, function(x) round(t.test(formula = formula(paste0(x, "~control")),data = both)$stderr,3)))
+  
+  #column 5, N rows of data for each var in treatment
+  treatment_n_a = round(treatment %>% summarise(obs=apply(.[vars],2,function(x) sum(!is.na(x)))),2)
+  
+  #column 6, N rows of data for each var in control
+  control_n_a = round(control %>% summarise(obs=apply(.[vars],2,function(x) sum(!is.na(x)))),2)
+  
+  treatment = data_subsets[[3]]
+  control = data_subsets[[4]]
+  vars= all_vars[13:23]
+  #will use together for t-tests
+  both = rbind(treatment,control)
+  #these are the title rows, rest of row will be blank, will come back to this in a moment
+  
+  #first column, var means for treatment
+  treatment_mean_vector_b = treatment %>% summarise(mean=apply(.[vars],2,mean,na.rm=T))
+  
+   #Second column, var means for control
+  control_mean_vector_b = control %>% summarise(mean=apply(.[vars],2,mean,na.rm=T))
+  
+  #third column, their difference
+  difference_vector_b = round(treatment_mean_vector_b-control_mean_vector_b,3)
+  
+  #Column 4, se vector of stderror in difference between treatment and control for each var
+  se_vector_b = unlist(lapply(vars, function(x) round(t.test(formula = formula(paste0(x, "~control")),data = both)$stderr,3)))
+  
+  #column 5, N rows of data for each var in treatment
+  treatment_n_b = round(treatment %>% summarise(obs=apply(.[vars],2,function(x) sum(!is.na(x)))),2)
+  
+  #column 6, N rows of data for each var in control
+  control_n_b = round(control %>% summarise(obs=apply(.[vars],2,function(x) sum(!is.na(x)))),2)
+  
+  
+  #append columns to make dataframe
+  table = cbind(round(unlist(c(treatment_mean_vector_a,treatment_mean_vector_b)),2),round(unlist(c(control_mean_vector_a,control_mean_vector_b)),2),unlist(c(difference_vector_a,difference_vector_b)),unlist(c(se_vector_a,se_vector_b)),unlist(c(treatment_n_a,treatment_n_b)),unlist(c(control_n_a,control_n_b)))
+
+  #thank you for user helatemail from stack overflow for the next three brilliant lines that added empty rows where i needed them
+  s <- sort(c(seq_len(nrow(table)), title_index))
+  s[[3]]=1
+  final_table <- table[s,]
+  final_table[titles,] <- NA
+  
+  #now add row-names
+  final_table = cbind(gsub("#","",row_labels),final_table)
+  
+  #make it a dataframe   
+  to_flex = as.data.frame(final_table)
+  
+  #name the columns
+  colnames(to_flex) = c(" ","Mean   (treatment)","Mean   (control)", "Difference","Standard Error","Observations (treatment)","Observations (control)")
+  
+  set_flextable_defaults(font.size = 10,font.family = "Times New Roman")
+  
+  #little bit of formatting
+  formatted_table = flextable::flextable(to_flex)  %>%
+     height_all(height=.05) %>%
+     hrule(i= 1:nrow(to_flex),rule = "exact")
+  
+  formatted_table %<>%width(j = 1, 1.95, unit = "in")
+  
+  formatted_table %<>%width(j = 2:7, 1, unit = "in") %>% align(j = 2:7, align="center")
+  
+   formatted_table %<>% align(part="header", align="center") %>% 
+     width(j = c(3,5), .85, unit = "in") %>%  
+     merge_at(i=1,j=(1:7)) %>%  
+     merge_at(i=18,j=(1:7)) 
+  
+  return(formatted_table)
+}
+
+```
+\newpage 
+
+\begin{comment} 
+The following data are from Muralidharan et al. (2019). \footnote{Muralidharan, Karthik, Abhijeet Singh, and Alejandro J. Ganimian. "Disrupting education? Experimental evidence on technology-aided instruction in India." American Economic Review 109.4 (2019): 1426-1460}
+
+\end{comment} 
+
+# Question 1 
+\begin{center}
+
+\textbf{Table 1—Sample Descriptives and Balance on Observables} 
+
+\end{center}
+
+\renewcommand{\arraystretch}{.7}
+```{r table1, include=T, echo=FALSE,warning=F,fig.width = 1, fig.height=2, fig.align='center',results = 'asis',ft.arraystretch=1.2}
+#declare row labels
+row_labels = c("#Panel A. All students in the baseline sample","#Demographic characteristics", "          Female","          Age (years)","          SES index","#Grade in School    ", "          Grade 4","          Grade 5", "          Grade 6","          Grade 7","          Grade 8", "          Grade 9","#Baseline test scores    ","          Math","          Hindi","Present at endline","# ", "#Panel B. Only students present in endline","#Demographic characteristics", "          Female","          Age (years)","          SES index","#Grade in School    ", "          Grade 4","          Grade 5", "          Grade 6","          Grade 7","          Grade 8", "          Grade 9","#Baseline test scores    ","          Math","          Hindi")
+
+#declare variables we will use
+vars = c("st_female1","st_age1","ses_index","d_sch_grade4","d_sch_grade5","d_sch_grade6","d_sch_grade7","d_sch_grade8","d_sch_grade9","m_theta_mle","h_theta_mle","in_r2","st_female1","st_age1","ses_index","d_sch_grade4","d_sch_grade5","d_sch_grade6","d_sch_grade7","d_sch_grade8","d_sch_grade9","m_theta_mle","h_theta_mle")
+
+#cat("## A) Table 1: Duplicating Table A ")
+cat("\n\n")
+
+#make table 1!
+table_maker(list(subset(data,data$control==0&data$round==1),subset(data,data$control==1&data$round==1),subset(data,data$control==0&data$round==1&data$in_r2==1),subset(data,data$control==1&data$round==1&data$in_r2==1)),vars,row_labels )
+
+#knit_print(table)
+```
+\textit{Notes:} Treatment and control groups refer to whether students were randomly assigned to Mindspark voucher. Variables used in this table are from the baseline data collection in September 2015. The data collection consisted of two parts: (i) a self-administered student survey, from which demographic characteristics are taken and (ii) assessment of skills in math and Hindi, administered using pen-and-paper tests. Tests were designed to cover wide ranges of achievement and to be linked across grades, as well as between baseline and endline assess- ments, using common items. Scores are scaled here using Item Response theory models and standardized to have a mean of zero and standard deviation of one in the baseline. SES index refers to a wealth index generated using the first component from a Principal Components Analysis consisting of indicators for ownership of various consumer durables and services in the household.
+\newpage 
+
+# Question 2
+
+\begin{center}
+
+\textbf{Table 2—Intent-To-Treat (ITT) Effects in a Regression Framework} 
+
+\input{model_1_edits.tex}
+
+\end{center}
+
+\newpage
+
+# Question 3 
+
+\includegraphics{combined.png}
+
+\begin{center}
+Figure 2. Mean Difference in Test Scores between Lottery Winners and Losers
+
+\end{center}
+
+\textit{Notes:} This figure shows mean of test scores, normalized with reference to baseline, across treatment and control groups in the two rounds of testing with 95 percent confidence intervals. Test scores were linked within-subject through IRT models, pooling across grades and across baseline and endline, and are normalized to have a mean of 0 and a standard deviation of 1 in the baseline. Whereas baseline test scores were balanced between lottery winners and lottery losers, endline scores are significantly higher for the treatment group.
+

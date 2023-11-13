@@ -1,0 +1,23 @@
+{
+\def\sym#1{\ifmmode^{#1}\else\(^{#1}\)\fi}
+\begin{tabular}{p{6cm}>{\centering\arraybackslash}p{2cm}>{\centering\arraybackslash}p{2cm}>{\centering\arraybackslash}p{2cm}>{\centering\arraybackslash}p{2cm}}
+\hline\hline
+                    &    \multicolumn{4}{c}{Standardized IRT scores (endline)}              \\
+                    & \cline{1-4}
+                    &\multicolumn{1}{c}{Math}&\multicolumn{1}{c}{Hindi}&\multicolumn{1}{c}{Math}&\multicolumn{1}{c}{Hindi}\\
+                      &\multicolumn{1}{c}{(1)}&\multicolumn{1}{c}{(2)}&\multicolumn{1}{c}{(3)}&\multicolumn{1}{c}{(4)}\\
+\hline
+Treatment           &       0.369&       0.227&       0.374&       0.238\\
+                    &     (0.064)&     (0.062)&     (0.064)&     (0.071)\\
+Baseline score &       0.584&  0.713         &       0.568&   0.684    \\
+                    &     (0.042)&    (0.040)         &     (0.051)&  (0.033)   \\
+Constant            &       0.326&       0.175&       0.324&       0.169\\
+                    &     (0.044)&     (0.044)&     (0.031)&     (0.035)\\
+Strata Fixed Effects & Yes & Yes & No & No\\   
+ & & & & \\          
+Observations        &         535&         537&         535&         537\\
+R$^{2}$             &       0.403&       0.493&       0.397&       0.473\\
+\hline
+\multicolumn{5}{p{.8\textwidth}}{\textit{Notes:} Robust standard errors in parentheses. \textit{Treatment} is a dummy variable indicating a randomly assigned offer of aMindspark voucher. Tests in both math and Hindi were designed to cover wide ranges of achievement and to be linked acrossgrades, as well as between baseline and endline assessments, using common items. Scores are scaled here using Item Responsetheory models and standardized to have a mean of zero and standard deviation of one in the baseline.}
+\end{tabular}
+}
