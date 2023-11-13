@@ -1,0 +1,173 @@
+---
+title: |
+  | \vspace{13cm} \LARGE\textcolor{white}{\textbf{PSET 3: Balance}}
+subtitle: \LARGE\textcolor{white}{\textbf{EDU S598 | Dr.Susan Dynarski}}
+author: \LARGE\textcolor{white}{\textbf{Dean Kaplan}}
+date: \LARGE\textcolor{white}{\textbf{October 3, 2023}}
+geometry: "left=1cm,right=1cm,top=2cm,bottom=2cm"
+header-includes:
+-  \AddToShipoutPictureBG{\ifthenelse{\value{page}<2}{\AtPageLowerLeft{{\includegraphics[width=17in,height=20in]{comp5.jpg}}}}{}}
+output: 
+  pdf_document:
+    latex_engine: xelatex
+    fig_caption: false
+    keep_tex: true
+
+    includes:
+      in_header: header.tex
+
+    
+always_allow_html: yes
+---
+\thispagestyle{firstpage}  
+\newpage
+\tableofcontents
+\newpage
+\definecolor{hightlightColor}{HTML}{FFFF66}
+
+
+
+```{r define_function, include=F, echo=FALSE,fig.width = 1, fig.height=2, fig.align='center',results = 'asis'}
+#libraries we will use
+library(knitr)
+library(flextable)
+library(dplyr)
+library(magrittr)
+#load data
+data= haven::read_dta("mindspark_balance.dta")
+options(knitr.kable.NA = '')
+
+
+#declare function that accepts a list of dataframes as a tuple where index 1 = treatment rows and index 2 = control row, and two string vectors, First is our variables to describe and second are the row labels
+#this function will fashion and format our tables
+
+table_maker <- function(data_subsets,vars,row_labels){
+  
+  #nice to use them seperate sometimes
+  treatment = data_subsets[[1]]
+  control = data_subsets[[2]]
+  #will use together for t-tests
+  both = rbind(treatment,control)
+  #these are the title rows, rest of row will be blank, will come back to this in a moment
+  titles = grep("#",row_labels)
+  #once we add the rows in, there will be some reshuffling so this is accounting for that reshuffle
+  title_index = (titles-(1:length(titles)-1))
+  
+  #first column, var means for treatment
+  treatment_mean_vector = treatment %>% summarise(mean=apply(.[vars],2,mean,na.rm=T))
+  
+   #Second column, var means for control
+  control_mean_vector = control %>% summarise(mean=apply(.[vars],2,mean,na.rm=T))
+  
+  #third column, their difference
+  difference_vector = round(treatment_mean_vector-control_mean_vector,3)
+  
+  #Column 4, se vector of stderror in difference between treatment and control for each var
+  se_vector = unlist(lapply(vars, function(x) round(t.test(formula = formula(paste0(x, "~control")),data = both)$stderr,3)))
+  
+  #column 5, N rows of data for each var in treatment
+  treatment_n = round(treatment %>% summarise(obs=apply(.[vars],2,function(x) sum(!is.na(x)))),2)
+  
+  #column 6, N rows of data for each var in control
+  control_n = round(control %>% summarise(obs=apply(.[vars],2,function(x) sum(!is.na(x)))),2)
+  
+  #append columns to make dataframe
+  table = cbind(round(treatment_mean_vector,2),round(control_mean_vector,2),difference_vector,se_vector,treatment_n,control_n)
+
+  #thank you for user helatemail from stack overflow for the next three brilliant lines that added empty rows where i needed them
+  s <- sort(c(seq_len(nrow(table)), title_index))
+  final_table <- table[s,]
+  final_table[duplicated(s)[c(2:length(duplicated(s)),1)],] <- NA
+  
+  #now add row-names
+  final_table = cbind(gsub("#","",row_labels),final_table)
+     
+  #name the columns
+  names(final_table) = c(" ","Mean (treatment)","Mean (control)","Difference","Standard Error","Observations (treatment)","Observations (control)")
+  
+  #little bit of formatting
+  formatted_table = flextable::flextable(final_table) %>% autofit()
+  
+  formatted_table %<>%width(j = 1, 1.95, unit = "in")
+  
+  formatted_table %<>%width(j = 2:7, 1, unit = "in") %>% align(j = 2:7, align="center")
+  
+   formatted_table %<>% align(part="header", align="center")
+  
+   formatted_table %<>%width(j = c(3,5), .85, unit = "in")
+  
+  return(formatted_table)
+}
+
+```
+\newpage 
+
+# Question 1: Replicate Table
+
+The following data are from Muralidharan et al. (2019). \footnote{Muralidharan, Karthik, Abhijeet Singh, and Alejandro J. Ganimian. "Disrupting education? Experimental evidence on technology-aided instruction in India." American Economic Review 109.4 (2019): 1426-1460}
+
+```{r table1, include=T, echo=FALSE,warning=F,fig.width = 1, fig.height=2, fig.align='center',results = 'asis'}
+#declare row labels
+row_labels = c("#Demographic characteristics", "          Female","          Age (years)","          SES index","#Grade in School    ", "          Grade 4","          Grade 5", "          Grade 6","          Grade 7","          Grade 8", "          Grade 9","#Baseline test scores    ","          Math","          Hindi","Present at endline")
+
+#declare variables we will use
+vars = c("st_female1","st_age1","ses_index","d_sch_grade4","d_sch_grade5","d_sch_grade6","d_sch_grade7","d_sch_grade8","d_sch_grade9","m_theta_mle","h_theta_mle","in_r2")
+
+cat("## A) Table 1: Duplicating Table A ")
+cat("\n\n")
+
+#make table 1!
+table_maker(list(subset(data,data$control==0&data$round==1),subset(data,data$control==1&data$round==1)),vars,row_labels )
+
+#knit_print(table)
+```
+
+\newpage 
+
+
+```{r table2, include=TRUE, echo=FALSE, warning=F, fig.width = 1, fig.height=2, fig.align='center',results = 'asis'}
+cat("## B) Table 2: Duplicating Table B ")
+cat("\n\n")
+#knit_print(table)
+
+#make table 2!
+table_maker(list(subset(data,data$control==0&data$round==1&data$in_r2==1),subset(data,data$control==1&data$round==1&data$in_r2==1)),vars[c(-length(vars))],row_labels[c(-length(row_labels))] )
+
+```
+
+\newpage 
+
+# Question 2: Added Measures
+
+```{r table3, include=TRUE, echo=FALSE,warning=F,wfig.width = 1, fig.height=2, fig.align='center',results = 'asis'}
+#two new vars
+row_labels = c("#Demographic characteristics", "          Female","          Age (years)","          SES index","#Grade in School", "          Grade 4","          Grade 5", "          Grade 6","          Grade 7","          Grade 8", "          Grade 9","#Baseline test scores","          Math","          Hindi","#Added Measures","          Private Tutoring","          Private Math Tutoring","Present at endline")
+
+#two new vars
+vars = c("st_female1","st_age1","ses_index","d_sch_grade4","d_sch_grade5","d_sch_grade6","d_sch_grade7","d_sch_grade8","d_sch_grade9","m_theta_mle","h_theta_mle","any_tuition","st_tui_math_hrs","in_r2")
+
+cat("## A) Table 3: Duplicating Table A With Added Covariates ")
+cat("\n\n")
+
+#make table 3, two new vars!
+table_maker(list(subset(data,data$control==0&data$round==1),subset(data,data$control==1&data$round==1)),vars,row_labels)
+
+#knit_print(table)
+```
+
+\newpage 
+
+```{r table4, include=TRUE, echo=FALSE,warning=F,fig.width = 1, fig.height=2, fig.align='center',results = 'asis'}
+
+cat("## B)Table 4: Duplicating Table B With Added Covariates ")
+cat("\n\n")
+
+#make table 4, same vars as table 3 with smaller subsample
+table_maker(list(subset(data,data$control==0&data$round==1&data$in_r2==1),subset(data,data$control==1&data$round==1&data$in_r2==1)),vars[c(-length(vars))],row_labels[c(-length(row_labels))] )
+
+#knit_print(table)
+
+
+```
+
+
